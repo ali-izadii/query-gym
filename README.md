@@ -110,6 +110,100 @@ optional parent, and `o{` means zero or more children. Lines show foreign
 keys; identifying versus non-identifying relationships is not distinguished.
 Tables without foreign keys show their primary keys instead.
 
+### How to read the symbols
+
+Read the symbols at an end of a line as “how many records at this end can
+relate to one record at the other end?” A **circle** means zero, a **bar**
+means one, and a **three-pronged crow’s foot** means many. The two symbols
+at each end specify the minimum and maximum number of related records.
+They are mirrored when drawn at the opposite end of a line.
+
+Each explanation below has a small rendered ERD underneath it.
+
+**Exactly one — `||`.** Every product belongs to exactly one seller.
+Look at the two bars beside `sellers`. Reading the other end: a seller can
+have zero or more products.
+
+```mermaid
+erDiagram
+    direction LR
+    sellers ||--o{ products : seller_id
+```
+
+**Zero or one — `|o` on the left, `o|` on the right.** A warehouse may
+belong to one seller or none (a platform-owned warehouse). Look at the
+circle and bar beside `sellers`.
+
+```mermaid
+erDiagram
+    direction LR
+    sellers |o--o{ warehouses : seller_id
+```
+
+**Zero or many — `o{` on the right, `}o` on the left.** A user can have
+no orders or any number of orders. Look at the circle and crow’s foot
+beside `orders`. Each order still belongs to exactly one user.
+
+```mermaid
+erDiagram
+    direction LR
+    users ||--o{ orders : user_id
+```
+
+**One or many — `|{` on the right, `}|` on the left.** In this illustrative
+example, an order must contain at least one item. Look at the bar and
+crow’s foot beside `order_items`. This minimum is **not enforced by this
+lab’s foreign keys**, so the actual schema diagram uses zero or many.
+
+```mermaid
+erDiagram
+    direction LR
+    orders ||--|{ order_items : "contains (illustrative)"
+```
+
+**Solid line — `--`; dashed line — `..`.** In standard Mermaid ER notation,
+a solid line means an *identifying* relationship: the parent’s key is part
+of the child’s primary key. A dashed line means a *non-identifying*
+relationship: the child has an independent primary key. Neither line style
+means “optional”; the endpoint symbols express that.
+
+For example, `cart_items` includes `cart_id` in its composite primary key,
+whereas `orders` has its own `order_id` primary key:
+
+```mermaid
+erDiagram
+    direction LR
+    carts ||--o{ cart_items : cart_id
+    users ||..o{ orders : user_id
+```
+
+The full schema diagrams below use solid lines uniformly to show declared
+foreign keys; they do **not** distinguish identifying relationships.
+
+**Key labels — `PK`, `FK`, and `UK`.** Inside an entity box, these mean
+primary key, foreign key, and unique key. Combined labels such as `PK, FK`
+mean a column serves both roles. Multiple `PK` columns form one composite
+primary key. A primary key uniquely identifies a row; a foreign key
+references another row; a unique key prevents duplicate non-NULL values
+under PostgreSQL’s default NULL handling.
+
+```mermaid
+erDiagram
+    cart_items {
+        bigint cart_id PK, FK
+        bigint variant_id PK, FK
+    }
+    product_variants {
+        bigint variant_id PK
+        text sku UK
+    }
+    product_variants ||--o{ cart_items : variant_id
+```
+
+**Text on a line** names the relationship. Here, `variant_id` names the
+foreign-key column in `cart_items`; it is not another cardinality symbol.
+The word before each attribute (such as `bigint` or `text`) is its data type.
+
 ### Marketplace (`shop`)
 
 ```mermaid
