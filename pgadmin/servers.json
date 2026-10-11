@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "query-practice (local)",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "querypractice",
+      "Username": "qp",
+      "SSLMode": "prefer",
+      "Comment": "Seeded e-commerce marketplace practice DB"
+    }
+  }
+}

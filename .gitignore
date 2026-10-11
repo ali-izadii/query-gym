@@ -1,0 +1,14 @@
+.env
+*.log
+out/
+tmp/
+.DS_Store
+# never commit dumps / generated data
+*.dump
+*.sql.gz
+*.csv
+!db/**/*.sql
+.idea/
+.vscode/
+__pycache__/
+work/

@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:17
+    container_name: qp_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-qp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qp}
+      POSTGRES_DB: ${POSTGRES_DB:-querypractice}
+      # deterministic sorting/formatting across machines
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
+      TZ: UTC
+      PGTZ: UTC
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/db:ro
+      - ./scripts:/scripts:ro
+      - ./solutions:/solutions:ro
+      - ./exercises:/exercises:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qp} -d ${POSTGRES_DB:-querypractice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    shm_size: 1gb
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: qp_pgadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_DISABLE_POSTFIX: "True"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+volumes:
+  pgdata:
+  pgadmin:
