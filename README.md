@@ -101,6 +101,126 @@ deliberate gaps in FX rates and shift calendars, and a dirty
 See [`docs/schema.md`](docs/schema.md) for the full ER description and
 [`docs/learning-path.md`](docs/learning-path.md) for a suggested order.
 
+## Data model (ERD)
+
+These diagrams show the base tables and declared foreign keys in
+[`db/schema/`](db/schema/). Relationship labels name the foreign-key column
+on the child table. `||` means exactly one parent, `o|` / `|o` means an
+optional parent, and `o{` means zero or more children. Lines show foreign
+keys; identifying versus non-identifying relationships is not distinguished.
+Tables without foreign keys show their primary keys instead.
+
+### Marketplace (`shop`)
+
+```mermaid
+erDiagram
+    "shop.categories" |o--o{ "shop.categories" : parent_id
+    "shop.countries" ||--o{ "shop.users" : country_code
+    "shop.users" |o--o{ "shop.users" : referred_by
+    "shop.users" ||--o{ "shop.user_addresses" : user_id
+    "shop.countries" ||--o{ "shop.user_addresses" : country_code
+    "shop.countries" ||--o{ "shop.sellers" : country_code
+    "shop.sellers" |o--o{ "shop.sellers" : parent_seller_id
+    "shop.sellers" |o--o{ "shop.warehouses" : seller_id
+    "shop.countries" ||--o{ "shop.warehouses" : country_code
+    "shop.sellers" ||--o{ "shop.products" : seller_id
+    "shop.categories" ||--o{ "shop.products" : category_id
+    "shop.currencies" ||--o{ "shop.products" : currency_code
+    "shop.products" ||--o{ "shop.product_variants" : product_id
+    "shop.warehouses" ||--o{ "shop.inventory" : warehouse_id
+    "shop.product_variants" ||--o{ "shop.inventory" : variant_id
+    "shop.product_variants" ||--o{ "shop.price_history" : variant_id
+    "shop.promotions" ||--o{ "shop.promotion_categories" : promo_id
+    "shop.categories" ||--o{ "shop.promotion_categories" : category_id
+    "shop.users" |o--o{ "shop.carts" : user_id
+    "shop.carts" ||--o{ "shop.cart_items" : cart_id
+    "shop.product_variants" ||--o{ "shop.cart_items" : variant_id
+    "shop.users" ||--o{ "shop.orders" : user_id
+    "shop.currencies" ||--o{ "shop.orders" : currency_code
+    "shop.user_addresses" |o--o{ "shop.orders" : ship_address_id
+    "shop.promotions" |o--o{ "shop.orders" : promo_id
+    "shop.orders" ||--o{ "shop.order_items" : order_id
+    "shop.product_variants" ||--o{ "shop.order_items" : variant_id
+    "shop.products" ||--o{ "shop.order_items" : product_id
+    "shop.sellers" ||--o{ "shop.order_items" : seller_id
+    "shop.warehouses" |o--o{ "shop.order_items" : fulfilled_from_warehouse
+    "shop.orders" ||--o{ "shop.payments" : order_id
+    "shop.currencies" ||--o{ "shop.payments" : currency_code
+    "shop.payments" ||--o{ "shop.refunds" : payment_id
+    "shop.order_items" |o--o{ "shop.refunds" : order_item_id
+    "shop.orders" ||--o{ "shop.shipments" : order_id
+    "shop.shipments" ||--o{ "shop.shipment_items" : shipment_id
+    "shop.order_items" ||--o{ "shop.shipment_items" : order_item_id
+    "shop.products" ||--o{ "shop.reviews" : product_id
+    "shop.users" ||--o{ "shop.reviews" : user_id
+    "shop.order_items" |o--o{ "shop.reviews" : order_item_id
+    "shop.reviews" |o--o{ "shop.reviews" : reply_to
+    "shop.users" ||--o{ "shop.wishlist_items" : user_id
+    "shop.products" ||--o{ "shop.wishlist_items" : product_id
+    "shop.users" ||--o{ "shop.support_tickets" : user_id
+    "shop.orders" |o--o{ "shop.support_tickets" : order_id
+    "shop.support_tickets" ||--o{ "shop.ticket_messages" : ticket_id
+    "shop.ticket_messages" |o--o{ "shop.ticket_messages" : parent_message_id
+    "shop.orders" |o--o{ "shop.carts" : converted_order_id
+    "shop.raw_leads" {
+        bigserial raw_id PK
+    }
+```
+
+### People and operations (`hr`)
+
+Includes the cross-schema links for support assignments and refund approvals.
+
+```mermaid
+erDiagram
+    "hr.departments" |o--o{ "hr.departments" : parent_department_id
+    "shop.countries" ||--o{ "hr.departments" : country_code
+    "hr.employees" |o--o{ "hr.employees" : manager_id
+    "hr.departments" ||--o{ "hr.employees" : department_id
+    "hr.job_titles" ||--o{ "hr.employees" : job_id
+    "shop.countries" ||--o{ "hr.employees" : country_code
+    "hr.employees" ||--o{ "hr.salary_history" : employee_id
+    "hr.employees" ||--o{ "hr.shifts" : employee_id
+    "shop.warehouses" |o--o{ "hr.shifts" : warehouse_id
+    "hr.employees" ||--o{ "hr.time_off" : employee_id
+    "hr.employees" |o--o{ "hr.time_off" : approved_by
+    "hr.employees" |o--o{ "shop.support_tickets" : assigned_to
+    "hr.employees" |o--o{ "shop.refunds" : approved_by
+```
+
+### Analytics (`analytics`)
+
+```mermaid
+erDiagram
+    "shop.users" |o--o{ "analytics.sessions" : user_id
+    "shop.countries" ||--o{ "analytics.ad_spend" : country_code
+    "shop.currencies" ||--o{ "analytics.fx_rates" : currency_code
+    "analytics.page_events" {
+        bigint event_id PK
+        timestamptz occurred_at PK
+    }
+    "analytics.monthly_targets" {
+        date target_month PK
+        text region PK
+    }
+    "analytics.calendar" {
+        date day PK
+    }
+    "analytics.dim_seller_scd2" {
+        bigserial sk PK
+    }
+    "analytics.audit_log" {
+        bigserial audit_id PK
+    }
+```
+
+`page_events` is partitioned by `occurred_at`; its monthly and default
+partitions are omitted. Its `session_id`, `user_id`, `product_id`, and
+`country_code` are logical join keys, **not enforced foreign keys**.
+Likewise, `dim_seller_scd2.seller_id` and `country_code` have no foreign-key
+constraints. Views, materialized views, and `practice` helpers are omitted;
+see [`docs/schema.md`](docs/schema.md) for details.
+
 ## Performance work
 
 The shipped index set in `db/schema/06_indexes.sql` is deliberately
