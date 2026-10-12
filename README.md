@@ -53,6 +53,11 @@ Grading rules:
 - Column *names* are not compared, but column **count, order and values** are.
 - Failures print the first differing rows on both sides.
 
+## Your progress
+
+Track completed exercises in [PROGRESS.md](PROGRESS.md). Check off each
+exercise and update the progress summary manually.
+
 ## Topics
 
 | # | Topic | Exercises |
